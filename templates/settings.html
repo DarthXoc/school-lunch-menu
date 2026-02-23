@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Settings – School Lunch Menu{% endblock %}
+
+{% block styles %}
+
+.settings-container {
+    max-width: 540px;
+    margin: 2rem auto;
+}
+.settings-heading {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+.settings-subtitle {
+    font-size: 0.875rem;
+    color: var(--clr-muted);
+    margin-bottom: 1.75rem;
+    line-height: 1.5;
+}
+.settings-card {
+    background: var(--clr-surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    border: 1px solid var(--clr-border);
+}
+.settings-section-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--clr-muted);
+    margin-bottom: 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--clr-border);
+}
+.form-group {
+    margin-bottom: 1.1rem;
+}
+.form-group:last-of-type { margin-bottom: 0; }
+label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--clr-text);
+    margin-bottom: 0.35rem;
+}
+.field-hint {
+    font-size: 0.75rem;
+    color: var(--clr-subtle);
+    margin-top: 0.3rem;
+    line-height: 1.4;
+}
+input[type="text"],
+select {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--clr-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: var(--clr-text);
+    background: var(--clr-surface);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    appearance: none;
+}
+input[type="text"]:focus,
+select:focus {
+    outline: none;
+    border-color: var(--clr-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+/* Custom select arrow */
+select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%2364748b' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    padding-right: 2.25rem;
+    cursor: pointer;
+}
+/* Read-only field */
+input[readonly] {
+    background: var(--clr-bg);
+    color: var(--clr-muted);
+    cursor: default;
+    border-color: var(--clr-border);
+}
+.divider {
+    border: none;
+    border-top: 1px solid var(--clr-border);
+    margin: 1.5rem 0;
+}
+.form-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: flex-end;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--clr-border);
+    margin-top: 1.5rem;
+}
+.btn-primary {
+    padding: 0.55rem 1.3rem;
+    background: var(--clr-primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+}
+.btn-primary:hover { background: var(--clr-primary-dark); }
+.btn-cancel {
+    font-size: 0.875rem;
+    color: var(--clr-muted);
+    text-decoration: none;
+    padding: 0.55rem 0.9rem;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+}
+.btn-cancel:hover { background: var(--clr-bg); color: var(--clr-text); }
+
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <h1 class="settings-heading">Settings</h1>
+    <p class="settings-subtitle">Configure the API parameters used to fetch your school's lunch menu.</p>
+
+    <div class="settings-card">
+        <form method="POST" action="/settings">
+
+            <p class="settings-section-title">School</p>
+
+            <div class="form-group">
+                <label for="school_id">School</label>
+                <select id="school_id" name="school_id" onchange="updateGrades(this)">
+                    {% for id, name, school_type in school_options %}
+                    <option value="{{ id }}" data-type="{{ school_type }}"
+                            {% if config.school_id == id %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="grade">Grade</label>
+                <select id="grade" name="grade">
+                    {% for value, label in grade_options %}
+                    <option value="{{ value }}" {% if config.grade == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="field-hint">Menus may differ by grade level.</p>
+            </div>
+
+            <hr class="divider">
+            <p class="settings-section-title">Cafeteria</p>
+
+            <div class="form-group">
+                <label for="meal_type">Meal Type</label>
+                <select id="meal_type" name="meal_type" onchange="updateServingLine(this.value)">
+                    <option value="Breakfast" {% if config.meal_type == 'Breakfast' %}selected{% endif %}>Breakfast</option>
+                    <option value="Lunch"     {% if config.meal_type == 'Lunch'     %}selected{% endif %}>Lunch</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="serving_line_display">Serving Line</label>
+                <input type="text" id="serving_line_display"
+                       value="{{ config.serving_line }}"
+                       readonly>
+                <p class="field-hint">Set automatically based on meal type.</p>
+            </div>
+
+            <div class="form-actions">
+                <a href="/" class="btn-cancel">Cancel</a>
+                <button type="submit" class="btn-primary">Save Settings</button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script>
+    const SERVING_LINE_MAP = {
+        'Breakfast': 'Hot Breakfast',
+        'Lunch':     'Main (Trayline)',
+    };
+
+    const GRADE_OPTIONS_BY_TYPE = {{ grade_options_by_type | tojson }};
+
+    function updateServingLine(mealType) {
+        document.getElementById('serving_line_display').value =
+            SERVING_LINE_MAP[mealType] || '';
+    }
+
+    function updateGrades(schoolSelect) {
+        const schoolType = schoolSelect.options[schoolSelect.selectedIndex].dataset.type;
+        const gradeSelect = document.getElementById('grade');
+        const currentGrade = gradeSelect.value;
+        const options = GRADE_OPTIONS_BY_TYPE[schoolType] || [];
+
+        gradeSelect.innerHTML = '';
+        options.forEach(([value, label]) => {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = label;
+            if (value === currentGrade) opt.selected = true;
+            gradeSelect.appendChild(opt);
+        });
+    }
+</script>
+{% endblock %}

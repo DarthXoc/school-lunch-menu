@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}School Lunch Menu{% endblock %}</title>
+    <style>
+        :root {
+            --clr-bg:             #f1f5f9;
+            --clr-surface:        #ffffff;
+            --clr-border:         #e2e8f0;
+            --clr-text:           #1e293b;
+            --clr-muted:          #64748b;
+            --clr-subtle:         #94a3b8;
+            --clr-primary:        #2563eb;
+            --clr-primary-dark:   #1d4ed8;
+            --clr-today:          #16a34a;
+            --clr-today-dark:     #15803d;
+            --clr-allergen-bg:    #fef3c7;
+            --clr-allergen-text:  #92400e;
+            --radius:             10px;
+            --shadow:             0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--clr-bg);
+            color: var(--clr-text);
+            min-height: 100vh;
+        }
+
+        /* ── Nav ─────────────────────────────── */
+        .site-nav {
+            background: var(--clr-surface);
+            border-bottom: 1px solid var(--clr-border);
+            padding: 0 1.5rem;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-brand {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--clr-text);
+            text-decoration: none;
+        }
+        .nav-settings {
+            font-size: 0.875rem;
+            color: var(--clr-muted);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            transition: background 0.15s, color 0.15s;
+        }
+        .nav-settings:hover { background: var(--clr-bg); color: var(--clr-text); }
+        .nav-settings svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        /* ── Page shell ──────────────────────── */
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        {% block styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    <nav class="site-nav">
+        <a class="nav-brand" href="/">🍽 School Lunch Menu</a>
+        <a class="nav-settings" href="/settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06
+                         a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09
+                         A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83
+                         l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09
+                         A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83
+                         l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09
+                         a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83
+                         l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09
+                         a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            Settings
+        </a>
+    </nav>
+    <main>{% block content %}{% endblock %}</main>
+</body>
+</html>
