@@ -7,7 +7,7 @@ A Python/Flask web app that fetches and displays your school's daily lunch (or b
 - Weekly calendar view with prev/next navigation
 - Fetches live menu data from the SchoolCafe API
 - Configurable school, grade, and meal type via a Settings page
-- Serving line auto-set based on meal type (Breakfast → Hot Breakfast, Lunch → Main (Trayline))
+- Meal type and serving line dynamically fetched from the SchoolCafe API based on the selected school
 - Grade options automatically scoped to the selected school type (Elementary, Middle, High)
 - Expandable per-day details (sides, grains, fruits, milk, condiments, allergens)
 
@@ -44,25 +44,51 @@ On first launch the app uses built-in defaults (Miller Elementary, Lunch, Grade 
 
 | Setting | Description |
 |---|---|
-| School | Dropdown of configured schools |
-| Grade | Grades scoped to the selected school type |
-| Meal Type | Breakfast or Lunch |
-| Serving Line | Auto-filled based on meal type (read-only) |
+| School District | Dropdown of supported districts; changing it reloads the school list |
+| School | Schools fetched from the SchoolCafe API for the selected district |
+| Grade | Grades scoped to the selected school type (Elementary, Middle, High) |
+| Meal Type | Populated from the API for the selected school |
+| Serving Line | Populated from the API based on the selected school and meal type |
 
 Settings are saved to `config.json` in the project root (git-ignored). If the file doesn't exist, defaults are used.
 
-## Adding a School
+## Adding a District
 
-In `app.py`, add an entry to `SCHOOL_OPTIONS`:
+In `app.py`, add an entry to `DISTRICT_OPTIONS`:
 
 ```python
-SCHOOL_OPTIONS = [
-    ("d7bd7613-a7ac-4508-b50f-fd713b8b9bba", "Miller Elementary", "Elementary"),
-    ("<uuid>", "My Middle School", "Middle"),
+DISTRICT_OPTIONS = [
+    ("4585", "Celina ISD"),
+    ("1611", "Frisco ISD"),
+    ("<district_id>", "My District"),
 ]
 ```
 
-The third value must be `"Elementary"`, `"Middle"`, or `"High"` — this controls which grade range is shown in Settings.
+The district ID can be found by inspecting SchoolCafe API traffic for your district. Once added, selecting the district in Settings will automatically fetch its school list from the API.
+
+## License
+
+MIT License — see below.
+
+```
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ## Project Structure
 
