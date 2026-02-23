@@ -65,6 +65,7 @@ select {
     background: var(--clr-surface);
     transition: border-color 0.15s, box-shadow 0.15s;
     appearance: none;
+    box-sizing: border-box;
 }
 input[type="text"]:focus,
 select:focus {
@@ -80,12 +81,9 @@ select {
     padding-right: 2.25rem;
     cursor: pointer;
 }
-/* Read-only field */
-input[readonly] {
-    background: var(--clr-bg);
-    color: var(--clr-muted);
+select:disabled {
+    opacity: 0.6;
     cursor: default;
-    border-color: var(--clr-border);
 }
 .divider {
     border: none;
@@ -96,11 +94,98 @@ input[readonly] {
     display: flex;
     gap: 0.75rem;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     padding-top: 1.25rem;
     border-top: 1px solid var(--clr-border);
     margin-top: 1.5rem;
 }
+.form-actions-right {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+.btn-reset {
+    padding: 0.55rem 1rem;
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, border-color 0.15s;
+}
+.btn-reset:hover { background: #fef2f2; border-color: #ef4444; }
+
+/* ── Debug section ───────────────────────── */
+.debug-section { margin-top: 1.5rem; }
+.debug-toggle {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--clr-muted);
+    cursor: pointer;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--clr-border);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+}
+.debug-toggle::-webkit-details-marker { display: none; }
+.debug-toggle::after { content: '▸'; font-size: 0.65rem; opacity: 0.5; }
+details.debug-section[open] .debug-toggle::after { content: '▾'; }
+.debug-content {
+    padding-top: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+.debug-api-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--clr-subtle);
+    margin-bottom: 0.25rem;
+}
+.debug-url-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+.debug-url {
+    font-family: monospace;
+    font-size: 0.72rem;
+    color: var(--clr-text);
+    word-break: break-all;
+    flex: 1;
+    background: var(--clr-bg);
+    border: 1px solid var(--clr-border);
+    border-radius: 5px;
+    padding: 0.4rem 0.6rem;
+    line-height: 1.5;
+}
+.btn-copy {
+    padding: 0.3rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1px solid var(--clr-border);
+    border-radius: 5px;
+    background: var(--clr-surface);
+    color: var(--clr-muted);
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-copy:hover { background: var(--clr-bg); color: var(--clr-text); }
+.btn-copy.copied { color: #16a34a; border-color: #86efac; background: #f0fdf4; }
+
 .btn-primary {
     padding: 0.55rem 1.3rem;
     background: var(--clr-primary);
@@ -132,23 +217,33 @@ input[readonly] {
     <p class="settings-subtitle">Configure the API parameters used to fetch your school's lunch menu.</p>
 
     <div class="settings-card">
-        <form method="POST" action="/settings">
+        <form id="settings-form" method="POST" action="/settings">
+
+            <!-- Hidden inputs updated by JS on school selection change -->
+            <input type="hidden" id="school_name_input" name="school_name" value="{{ config.school_name }}">
+            <input type="hidden" id="school_type_input" name="school_type" value="{{ config.school_type }}">
 
             <p class="settings-section-title">School</p>
 
             <div class="form-group">
-                <label for="school_id">School</label>
-                <select id="school_id" name="school_id" onchange="updateGrades(this)">
-                    {% for id, name, school_type in school_options %}
-                    <option value="{{ id }}" data-type="{{ school_type }}"
-                            {% if config.school_id == id %}selected{% endif %}>{{ name }}</option>
+                <label for="district_id">School District</label>
+                <select id="district_id" name="district_id" onchange="onDistrictChange(this.value)">
+                    {% for id, name in district_options %}
+                    <option value="{{ id }}" {% if config.district_id == id %}selected{% endif %}>{{ name }}</option>
                     {% endfor %}
                 </select>
             </div>
 
             <div class="form-group">
+                <label for="school_id">School</label>
+                <select id="school_id" name="school_id" onchange="onSchoolChange(this)" disabled>
+                    <option value="">Loading…</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="grade">Grade</label>
-                <select id="grade" name="grade">
+                <select id="grade" name="grade" onchange="updateDebugUrls()">
                     {% for value, label in grade_options %}
                     <option value="{{ value }}" {% if config.grade == value %}selected{% endif %}>
                         {{ label }}
@@ -163,48 +258,99 @@ input[readonly] {
 
             <div class="form-group">
                 <label for="meal_type">Meal Type</label>
-                <select id="meal_type" name="meal_type" onchange="updateServingLine(this.value)">
-                    <option value="Breakfast" {% if config.meal_type == 'Breakfast' %}selected{% endif %}>Breakfast</option>
-                    <option value="Lunch"     {% if config.meal_type == 'Lunch'     %}selected{% endif %}>Lunch</option>
+                <select id="meal_type" name="meal_type" onchange="onMealTypeChange(this.value)" disabled>
+                    {% if config.meal_type %}
+                    <option value="{{ config.meal_type }}">{{ config.meal_type }}</option>
+                    {% else %}
+                    <option value="">Loading…</option>
+                    {% endif %}
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="serving_line_display">Serving Line</label>
-                <input type="text" id="serving_line_display"
-                       value="{{ config.serving_line }}"
-                       readonly>
-                <p class="field-hint">Set automatically based on meal type.</p>
-            </div>
-
-            <div class="form-actions">
-                <a href="/" class="btn-cancel">Cancel</a>
-                <button type="submit" class="btn-primary">Save Settings</button>
+                <label for="serving_line">Serving Line</label>
+                <select id="serving_line" name="serving_line" disabled>
+                    {% if config.serving_line %}
+                    <option value="{{ config.serving_line }}">{{ config.serving_line }}</option>
+                    {% else %}
+                    <option value="">Loading…</option>
+                    {% endif %}
+                </select>
             </div>
 
         </form>
+
+        <hr class="divider">
+        <details class="debug-section">
+            <summary class="debug-toggle">Debug</summary>
+            <div class="debug-content">
+                <div>
+                    <div class="debug-api-label">Schools</div>
+                    <div class="debug-url-row">
+                        <code id="debug-schools-url" class="debug-url"></code>
+                        <button type="button" class="btn-copy" onclick="copyDebugUrl('debug-schools-url', this)">Copy</button>
+                    </div>
+                </div>
+                <div>
+                    <div class="debug-api-label">Meal Types</div>
+                    <div class="debug-url-row">
+                        <code id="debug-meal-types-url" class="debug-url"></code>
+                        <button type="button" class="btn-copy" onclick="copyDebugUrl('debug-meal-types-url', this)">Copy</button>
+                    </div>
+                </div>
+                <div>
+                    <div class="debug-api-label">Serving Lines</div>
+                    <div class="debug-url-row">
+                        <code id="debug-serving-lines-url" class="debug-url"></code>
+                        <button type="button" class="btn-copy" onclick="copyDebugUrl('debug-serving-lines-url', this)">Copy</button>
+                    </div>
+                </div>
+                <div>
+                    <div class="debug-api-label">Daily Menu</div>
+                    <div class="debug-url-row">
+                        <code id="debug-daily-menu-url" class="debug-url"></code>
+                        <button type="button" class="btn-copy" onclick="copyDebugUrl('debug-daily-menu-url', this)">Copy</button>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <div class="form-actions">
+            <form method="POST" action="/settings/reset"
+                  onsubmit="return confirm('Reset all settings to defaults? This cannot be undone.')">
+                <button type="submit" class="btn-reset">Reset Settings</button>
+            </form>
+            <div class="form-actions-right">
+                <a href="/" class="btn-cancel">Cancel</a>
+                <button type="submit" form="settings-form" class="btn-primary">Save Settings</button>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    const SERVING_LINE_MAP = {
-        'Breakfast': 'Hot Breakfast',
-        'Lunch':     'Main (Trayline)',
-    };
-
     const GRADE_OPTIONS_BY_TYPE = {{ grade_options_by_type | tojson }};
 
-    function updateServingLine(mealType) {
-        document.getElementById('serving_line_display').value =
-            SERVING_LINE_MAP[mealType] || '';
-    }
+    // Maps SiteTypeDescription from the schools API → internal grade-options key
+    const SITE_TYPE_MAP = {
+        'Elementary School': 'Elementary',
+        'Middle School':     'Middle',
+        'High School':       'High',
+    };
 
-    function updateGrades(schoolSelect) {
-        const schoolType = schoolSelect.options[schoolSelect.selectedIndex].dataset.type;
+    const TYPE_ORDER = ['Elementary School', 'Middle School', 'High School'];
+
+    // Saved values used for pre-selection on page load
+    const SAVED_SCHOOL_ID    = '{{ config.school_id }}';
+    const SAVED_MEAL_TYPE    = '{{ config.meal_type }}';
+    const SAVED_SERVING_LINE = '{{ config.serving_line }}';
+
+    // ── Grades ───────────────────────────────────────────────────────────────
+
+    function updateGrades(schoolType) {
         const gradeSelect = document.getElementById('grade');
         const currentGrade = gradeSelect.value;
         const options = GRADE_OPTIONS_BY_TYPE[schoolType] || [];
-
         gradeSelect.innerHTML = '';
         options.forEach(([value, label]) => {
             const opt = document.createElement('option');
@@ -214,5 +360,199 @@ input[readonly] {
             gradeSelect.appendChild(opt);
         });
     }
+
+    // ── Schools ───────────────────────────────────────────────────────────────
+
+    function onDistrictChange(districtId) {
+        updateDebugUrls();
+        loadSchools(districtId, null);
+    }
+
+    function onSchoolChange(schoolSelect) {
+        const opt = schoolSelect.options[schoolSelect.selectedIndex];
+        const schoolType = opt.dataset.type || 'Elementary';
+        document.getElementById('school_name_input').value = opt.textContent.trim();
+        document.getElementById('school_type_input').value = schoolType;
+        updateGrades(schoolType);
+        if (opt.value) loadMealTypes(opt.value);
+    }
+
+    async function loadSchools(districtId, preselectId) {
+        const schoolSelect = document.getElementById('school_id');
+        schoolSelect.disabled = true;
+        schoolSelect.innerHTML = '<option value="">Loading…</option>';
+
+        try {
+            const resp = await fetch(`/api/schools?district_id=${encodeURIComponent(districtId)}`);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const schools = await resp.json();
+
+            const groups = {};
+            schools.forEach(s => {
+                const t = s.SiteTypeDescription || 'Other';
+                if (!groups[t]) groups[t] = [];
+                groups[t].push(s);
+            });
+            Object.values(groups).forEach(arr =>
+                arr.sort((a, b) => a.SchoolName.localeCompare(b.SchoolName))
+            );
+
+            schoolSelect.innerHTML = '';
+            const orderedTypes = [
+                ...TYPE_ORDER.filter(t => groups[t]),
+                ...Object.keys(groups).filter(t => !TYPE_ORDER.includes(t)),
+            ];
+            orderedTypes.forEach(typeName => {
+                const group = document.createElement('optgroup');
+                group.label = typeName;
+                groups[typeName].forEach(school => {
+                    const opt = document.createElement('option');
+                    opt.value = school.SchoolId;
+                    opt.textContent = school.SchoolName;
+                    opt.dataset.type = SITE_TYPE_MAP[typeName] || 'Elementary';
+                    if (preselectId && school.SchoolId === preselectId) opt.selected = true;
+                    group.appendChild(opt);
+                });
+                schoolSelect.appendChild(group);
+            });
+
+            onSchoolChange(schoolSelect);
+        } catch (err) {
+            schoolSelect.innerHTML = '<option value="">Failed to load – try again</option>';
+        } finally {
+            schoolSelect.disabled = false;
+        }
+    }
+
+    // ── Meal Types ────────────────────────────────────────────────────────────
+
+    async function onMealTypeChange(mealType) {
+        const schoolId = document.getElementById('school_id').value;
+        if (schoolId && mealType) await loadServingLines(schoolId, mealType);
+    }
+
+    async function loadMealTypes(schoolId) {
+        const mealTypeSelect    = document.getElementById('meal_type');
+        const servingLineSelect = document.getElementById('serving_line');
+
+        mealTypeSelect.disabled = true;
+        mealTypeSelect.innerHTML = '<option value="">Loading…</option>';
+        servingLineSelect.disabled = true;
+        servingLineSelect.innerHTML = '<option value="">—</option>';
+
+        try {
+            const resp = await fetch(`/api/meal-types?school_id=${encodeURIComponent(schoolId)}`);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const mealTypes = await resp.json();
+
+            mealTypeSelect.innerHTML = '';
+            let selected = null;
+            mealTypes.forEach(mt => {
+                const opt = document.createElement('option');
+                opt.value = mt.MealTypeDescription;
+                opt.textContent = mt.MealTypeDescription;
+                if (mt.MealTypeDescription === SAVED_MEAL_TYPE) {
+                    opt.selected = true;
+                    selected = mt.MealTypeDescription;
+                }
+                mealTypeSelect.appendChild(opt);
+            });
+            if (!selected) selected = mealTypeSelect.options[0]?.value;
+            if (selected) await loadServingLines(schoolId, selected);
+        } catch (err) {
+            mealTypeSelect.innerHTML = '<option value="">Failed to load</option>';
+        } finally {
+            mealTypeSelect.disabled = false;
+        }
+    }
+
+    // ── Serving Lines ─────────────────────────────────────────────────────────
+
+    async function loadServingLines(schoolId, mealType) {
+        const servingLineSelect = document.getElementById('serving_line');
+        servingLineSelect.disabled = true;
+        servingLineSelect.innerHTML = '<option value="">Loading…</option>';
+
+        try {
+            const resp = await fetch(
+                `/api/serving-lines?school_id=${encodeURIComponent(schoolId)}&meal_type=${encodeURIComponent(mealType)}`
+            );
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const lines = await resp.json();
+
+            servingLineSelect.innerHTML = '';
+            lines.forEach(sl => {
+                const opt = document.createElement('option');
+                opt.value = sl.ServingLineDescription;
+                opt.textContent = sl.ServingLineDescription;
+                if (sl.ServingLineDescription === SAVED_SERVING_LINE) opt.selected = true;
+                servingLineSelect.appendChild(opt);
+            });
+        } catch (err) {
+            servingLineSelect.innerHTML = '<option value="">Failed to load</option>';
+        } finally {
+            servingLineSelect.disabled = false;
+            updateDebugUrls();
+        }
+    }
+
+    // ── Debug ─────────────────────────────────────────────────────────────────
+
+    function updateDebugUrls() {
+        const now = new Date();
+        const fmtDate = d => [
+            String(d.getMonth() + 1).padStart(2, '0'),
+            String(d.getDate()).padStart(2, '0'),
+            d.getFullYear(),
+        ].join('/');
+
+        const startDateStr = fmtDate(now);
+        const oneYearOut   = new Date(now);
+        oneYearOut.setFullYear(oneYearOut.getFullYear() + 1);
+        const endDateStr   = fmtDate(oneYearOut);
+
+        const districtId  = document.getElementById('district_id').value  || '…';
+        const schoolId    = document.getElementById('school_id').value     || '…';
+        const mealType    = document.getElementById('meal_type').value     || '…';
+        const servingLine = document.getElementById('serving_line').value  || '…';
+        const grade       = document.getElementById('grade').value         || '…';
+        const personId    = '00000000-0000-0000-0000-000000000000';
+
+        document.getElementById('debug-schools-url').textContent =
+            `https://webapis.schoolcafe.com/api/GetSchoolsList?districtId=${districtId}`;
+
+        document.getElementById('debug-meal-types-url').textContent =
+            `https://webapis.schoolcafe.com/api/GetMealType?schoolid=${schoolId}&startdate=${startDateStr}&enddate=${endDateStr}`;
+
+        document.getElementById('debug-serving-lines-url').textContent =
+            `https://webapis.schoolcafe.com/api/GetServiceLine?schoolid=${schoolId}&startdate=${startDateStr}&enddate=${endDateStr}&mealtype=${mealType}`;
+
+        document.getElementById('debug-daily-menu-url').textContent =
+            `https://webapis.schoolcafe.com/api/CalendarView/GetDailyMenuitemsByGrade?SchoolId=${schoolId}&ServingDate=${startDateStr}&ServingLine=${servingLine}&MealType=${mealType}&Grade=${grade}&PersonId=${personId}`;
+    }
+
+    async function copyDebugUrl(id, btn) {
+        const url = document.getElementById(id).textContent;
+        try {
+            await navigator.clipboard.writeText(url);
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+        } catch {
+            const range = document.createRange();
+            range.selectNode(document.getElementById(id));
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+        }
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadSchools(
+            document.getElementById('district_id').value,
+            SAVED_SCHOOL_ID
+        );
+    });
 </script>
 {% endblock %}

@@ -241,12 +241,16 @@
 
 <script>
     const CATEGORIES = [
-        { key: 'GRAINS',     label: 'Grains' },
-        { key: 'VEGETABLES', label: 'Vegetables' },
-        { key: 'FRUITS',     label: 'Fruits' },
-        { key: 'MILK',       label: 'Milk' },
-        { key: 'CONDIMENTS', label: 'Condiments' },
+        { key: 'GRAINS',     alt: 'GRAIN',     label: 'Grains' },
+        { key: 'VEGETABLES', alt: 'VEGETABLE',  label: 'Vegetables' },
+        { key: 'FRUITS',     alt: 'FRUIT',      label: 'Fruits' },
+        { key: 'MILK',       alt: 'MILK',       label: 'Milk' },
+        { key: 'CONDIMENTS', alt: 'CONDIMENT',  label: 'Condiments' },
     ];
+
+    function getCategory(data, cat) {
+        return data[cat.key] || data[cat.alt] || [];
+    }
 
     function esc(str) {
         return String(str ?? '')
@@ -275,9 +279,9 @@
 
     function renderDay(card, data) {
         const body = card.querySelector('.day-body');
-        const entrees = data.ENTREES || [];
-        const sides = CATEGORIES.filter(c => (data[c.key] || []).length > 0);
-        const total = entrees.length + sides.reduce((n, c) => n + data[c.key].length, 0);
+        const entrees = data.ENTREES || data.ENTREE || [];
+        const sides = CATEGORIES.filter(c => getCategory(data, c).length > 0);
+        const total = entrees.length + sides.reduce((n, c) => n + getCategory(data, c).length, 0);
 
         if (total === 0) {
             body.innerHTML = '<p class="state-msg">No menu available</p>';
@@ -293,7 +297,7 @@
             const panelContent = sides.map(cat => `
                 <div class="detail-section">
                     <div class="detail-section-label">${cat.label}</div>
-                    ${data[cat.key].map(renderItem).join('')}
+                    ${getCategory(data, cat).map(renderItem).join('')}
                 </div>`).join('');
 
             detailsHTML = `

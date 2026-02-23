@@ -10,7 +10,10 @@ app = Flask(__name__)
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
 
 DEFAULT_CONFIG = {
+    "district_id":  "1611",
     "school_id":    "d7bd7613-a7ac-4508-b50f-fd713b8b9bba",
+    "school_name":  "Miller Elementary",
+    "school_type":  "Elementary",
     "serving_line": "Main (Trayline)",
     "meal_type":    "Lunch",
     "grade":        "01",
@@ -22,6 +25,15 @@ PERSON_ID = "00000000-0000-0000-0000-000000000000"
 API_URL = (
     "https://webapis.schoolcafe.com/api/CalendarView/GetDailyMenuitemsByGrade"
 )
+
+SCHOOLS_API_URL = (
+    "https://webapis.schoolcafe.com/api/GetSchoolsList"
+)
+
+DISTRICT_OPTIONS = [
+    ("4585", "Celina ISD"),
+    ("1611", "Frisco ISD"),
+]
 
 GRADE_OPTIONS = {
     "Elementary": [
@@ -45,23 +57,16 @@ GRADE_OPTIONS = {
     ],
 }
 
-SCHOOL_OPTIONS = [
-    ("d7bd7613-a7ac-4508-b50f-fd713b8b9bba", "Miller Elementary", "Elementary"),
-]
-
-SERVING_LINE_MAP = {
-    "Breakfast": "Hot Breakfast",
-    "Lunch":     "Main (Trayline)",
-}
+MEAL_TYPE_API_URL    = "https://webapis.schoolcafe.com/api/GetMealType"
+SERVING_LINE_API_URL = "https://webapis.schoolcafe.com/api/GetServiceLine"
 
 
 # ── Config helpers ────────────────────────────────────────────────────────────
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE) as f:
-            return json.load(f)
-    return DEFAULT_CONFIG.copy()
+        return json.loads(open(CONFIG_FILE).read())
+    return json.loads(json.dumps(DEFAULT_CONFIG))
 
 
 def save_config(cfg):
@@ -145,28 +150,99 @@ def api_menu():
         return jsonify({"error": str(e)}), 502
 
 
+@app.route("/api/schools")
+def api_schools():
+    district_id = request.args.get("district_id", "").strip()
+    if not district_id:
+        return jsonify({"error": "district_id required"}), 400
+
+    try:
+        resp = http_requests.get(
+            SCHOOLS_API_URL,
+            params={"districtId": district_id},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except http_requests.RequestException as e:
+        return jsonify({"error": str(e)}), 502
+
+
+@app.route("/api/meal-types")
+def api_meal_types():
+    school_id = request.args.get("school_id", "").strip()
+    if not school_id:
+        return jsonify({"error": "school_id required"}), 400
+    today    = datetime.now()
+    start_dt = today.strftime("%m/%d/%Y")
+    end_dt   = today.replace(year=today.year + 1).strftime("%m/%d/%Y")
+    try:
+        resp = http_requests.get(
+            MEAL_TYPE_API_URL,
+            params={"schoolid": school_id, "startdate": start_dt, "enddate": end_dt},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except http_requests.RequestException as e:
+        return jsonify({"error": str(e)}), 502
+
+
+@app.route("/api/serving-lines")
+def api_serving_lines():
+    school_id = request.args.get("school_id", "").strip()
+    meal_type = request.args.get("meal_type", "").strip()
+    if not school_id or not meal_type:
+        return jsonify({"error": "school_id and meal_type required"}), 400
+    today    = datetime.now()
+    start_dt = today.strftime("%m/%d/%Y")
+    end_dt   = today.replace(year=today.year + 1).strftime("%m/%d/%Y")
+    try:
+        resp = http_requests.get(
+            SERVING_LINE_API_URL,
+            params={
+                "schoolid":  school_id,
+                "startdate": start_dt,
+                "enddate":   end_dt,
+                "mealtype":  meal_type,
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except http_requests.RequestException as e:
+        return jsonify({"error": str(e)}), 502
+
+
+@app.route("/settings/reset", methods=["POST"])
+def settings_reset():
+    if os.path.exists(CONFIG_FILE):
+        os.remove(CONFIG_FILE)
+    return redirect(url_for("settings"))
+
+
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
     cfg = load_config()
 
     if request.method == "POST":
-        cfg["school_id"]    = request.form.get("school_id", "").strip()
-        cfg["meal_type"]    = request.form.get("meal_type", "").strip()
-        cfg["serving_line"] = SERVING_LINE_MAP.get(cfg["meal_type"], "Main (Trayline)")
-        cfg["grade"]        = request.form.get("grade",     "").strip()
+        cfg["district_id"]  = request.form.get("district_id",  "").strip()
+        cfg["school_id"]    = request.form.get("school_id",    "").strip()
+        cfg["school_name"]  = request.form.get("school_name",  "").strip()
+        cfg["school_type"]  = request.form.get("school_type",  "Elementary").strip()
+        cfg["meal_type"]    = request.form.get("meal_type",    "").strip()
+        cfg["serving_line"] = request.form.get("serving_line", "").strip()
+        cfg["grade"]        = request.form.get("grade",        "").strip()
         save_config(cfg)
         return redirect(url_for("index"))
 
-    current_school_type = next(
-        (t for sid, _name, t in SCHOOL_OPTIONS if sid == cfg["school_id"]),
-        "Elementary",
-    )
+    school_type = cfg.get("school_type", "Elementary")
     return render_template(
         "settings.html",
         config=cfg,
-        grade_options=GRADE_OPTIONS[current_school_type],
+        district_options=DISTRICT_OPTIONS,
+        grade_options=GRADE_OPTIONS.get(school_type, GRADE_OPTIONS["Elementary"]),
         grade_options_by_type=GRADE_OPTIONS,
-        school_options=SCHOOL_OPTIONS,
     )
 
 
