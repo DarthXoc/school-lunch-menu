@@ -186,6 +186,11 @@ details.debug-section[open] .debug-toggle::after { content: '▾'; }
 .btn-copy:hover { background: var(--clr-bg); color: var(--clr-text); }
 .btn-copy.copied { color: #16a34a; border-color: #86efac; background: #f0fdf4; }
 
+@media (prefers-color-scheme: dark) {
+    .btn-reset:hover { background: rgba(239, 68, 68, 0.15); border-color: #ef4444; }
+    .btn-copy.copied { background: rgba(22, 163, 74, 0.15); border-color: rgba(22, 163, 74, 0.5); }
+}
+
 .btn-primary {
     padding: 0.55rem 1.3rem;
     background: var(--clr-primary);
