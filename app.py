@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime, timedelta
 
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, jsonify, redirect, render_template, request, url_for, Response
 import requests as http_requests
 
 app = Flask(__name__)
@@ -87,6 +87,11 @@ def get_week(offset: int):
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
+@app.route("/robots.txt")
+def robots():
+    return Response("User-agent: *\nDisallow: /\n", mimetype="text/plain")
+
 
 @app.route("/")
 def index():
