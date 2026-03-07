@@ -139,6 +139,30 @@
     letter-spacing: 0.03em;
 }
 
+/* ── Loading spinner ─────────────────────── */
+.spinner-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 0.75rem;
+    gap: 0.55rem;
+}
+.spinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid var(--clr-border);
+    border-top-color: var(--clr-primary);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner-label {
+    font-size: 0.73rem;
+    color: var(--clr-subtle);
+    font-style: italic;
+}
+
 /* ── State messages ──────────────────────── */
 .state-msg {
     padding: 1.25rem 0.75rem;
@@ -232,13 +256,17 @@
 <div class="calendar-grid">
     {% for day in weekdays %}
     <div class="day-card {% if day.is_today %}today{% endif %}"
-         data-api-date="{{ day.api_date }}">
+         data-api-date="{{ day.api_date }}"
+         data-iso-date="{{ day.iso }}">
         <div class="day-header">
             <span class="day-name">{{ day.name }}</span>
             <span class="day-date">{{ day.label }}</span>
         </div>
         <div class="day-body">
-            <p class="state-msg">Loading&hellip;</p>
+            <div class="spinner-wrap">
+                <div class="spinner"></div>
+                <span class="spinner-label">Loading&hellip;</span>
+            </div>
         </div>
     </div>
     {% endfor %}
@@ -326,16 +354,28 @@
         }
     }
 
-    document.querySelectorAll('.day-card').forEach(card => {
-        const date = card.dataset.apiDate;
-        fetch(`/api/menu?date=${encodeURIComponent(date)}`)
-            .then(r => r.json())
-            .then(data => renderDay(card, data))
-            .catch(() => {
-                card.querySelector('.day-body').innerHTML =
+    (async () => {
+        const cards = [...document.querySelectorAll('.day-card')]
+            .sort((a, b) => a.dataset.isoDate.localeCompare(b.dataset.isoDate));
+
+        // Kick off all fetches simultaneously
+        const promises = cards.map(card =>
+            fetch(`/api/menu?date=${encodeURIComponent(card.dataset.apiDate)}`)
+                .then(r => r.json())
+                .catch(() => null)
+        );
+
+        // Render in Mon→Fri order as each resolves
+        for (let i = 0; i < cards.length; i++) {
+            const data = await promises[i];
+            if (data) {
+                renderDay(cards[i], data);
+            } else {
+                cards[i].querySelector('.day-body').innerHTML =
                     '<p class="state-error">Failed to load</p>';
-            });
-    });
+            }
+        }
+    })();
 </script>
 
 {% endblock %}
