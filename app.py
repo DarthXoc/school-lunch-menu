@@ -1,20 +1,21 @@
 import json
-import os
+import urllib.parse
 from datetime import datetime, timedelta
 
-from flask import Flask, jsonify, redirect, render_template, request, url_for, Response
+from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for, Response
 import requests as http_requests
 
 app = Flask(__name__)
 
-CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
+COOKIE_NAME    = "slm_config"
+COOKIE_MAX_AGE = 365 * 24 * 60 * 60  # 1 year
 
 DEFAULT_CONFIG = {
     "district_id":  "1611",
-    "school_id":    "d7bd7613-a7ac-4508-b50f-fd713b8b9bba",
-    "school_name":  "Miller Elementary",
+    "school_id":    "",
+    "school_name":  "",
     "school_type":  "Elementary",
-    "serving_line": "Main (Trayline)",
+    "serving_line": "",
     "meal_type":    "Lunch",
     "grade":        "01",
 }
@@ -63,15 +64,19 @@ SERVING_LINE_API_URL = "https://webapis.schoolcafe.com/api/GetServiceLine"
 
 # ── Config helpers ────────────────────────────────────────────────────────────
 
-def load_config():
-    if os.path.exists(CONFIG_FILE):
-        return json.loads(open(CONFIG_FILE).read())
-    return json.loads(json.dumps(DEFAULT_CONFIG))
+def get_config():
+    """Read config from the request cookie, falling back to defaults."""
+    raw = request.cookies.get(COOKIE_NAME)
+    if raw:
+        try:
+            return json.loads(urllib.parse.unquote(raw))
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return dict(DEFAULT_CONFIG)
 
 
-def save_config(cfg):
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(cfg, f, indent=2)
+def cookie_is_set():
+    return COOKIE_NAME in request.cookies
 
 
 # ── Week helpers ──────────────────────────────────────────────────────────────
@@ -128,6 +133,9 @@ def index():
         week_label=week_label,
         can_go_back=offset > -4,
         can_go_forward=offset < 4,
+        show_onboarding=not cookie_is_set(),
+        district_options=DISTRICT_OPTIONS,
+        grade_options_by_type=GRADE_OPTIONS,
     )
 
 
@@ -137,7 +145,10 @@ def api_menu():
     if not date_str:
         return jsonify({"error": "date parameter required"}), 400
 
-    cfg = load_config()
+    cfg = get_config()
+    if not cfg.get("school_id"):
+        return jsonify({"error": "not_configured"}), 400
+
     params = {
         "SchoolId":    cfg["school_id"],
         "ServingDate": date_str,
@@ -221,14 +232,14 @@ def api_serving_lines():
 
 @app.route("/settings/reset", methods=["POST"])
 def settings_reset():
-    if os.path.exists(CONFIG_FILE):
-        os.remove(CONFIG_FILE)
-    return redirect(url_for("settings"))
+    response = make_response(redirect(url_for("index")))
+    response.delete_cookie(COOKIE_NAME, path="/")
+    return response
 
 
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
-    cfg = load_config()
+    cfg = get_config()
 
     if request.method == "POST":
         cfg["district_id"]  = request.form.get("district_id",  "").strip()
@@ -238,8 +249,16 @@ def settings():
         cfg["meal_type"]    = request.form.get("meal_type",    "").strip()
         cfg["serving_line"] = request.form.get("serving_line", "").strip()
         cfg["grade"]        = request.form.get("grade",        "").strip()
-        save_config(cfg)
-        return redirect(url_for("index"))
+
+        response = make_response(redirect(url_for("index")))
+        response.set_cookie(
+            COOKIE_NAME,
+            urllib.parse.quote(json.dumps(cfg), safe=""),
+            max_age=COOKIE_MAX_AGE,
+            path="/",
+            samesite="Lax",
+        )
+        return response
 
     school_type = cfg.get("school_type", "Elementary")
     return render_template(

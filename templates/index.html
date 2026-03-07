@@ -230,9 +230,202 @@
     border-bottom: 1px solid var(--clr-border);
 }
 
+/* ── Onboarding modal ────────────────────── */
+.ob-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 1rem;
+}
+.ob-card {
+    background: var(--clr-surface);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    width: 100%;
+    max-width: 440px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid var(--clr-border);
+}
+.ob-header {
+    padding: 1.75rem 1.75rem 0;
+}
+.ob-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--clr-text);
+    margin-bottom: 0.3rem;
+}
+.ob-subtitle {
+    font-size: 0.875rem;
+    color: var(--clr-muted);
+    line-height: 1.5;
+}
+.ob-body {
+    padding: 1.25rem 1.75rem 0;
+}
+.ob-footer {
+    padding: 1.25rem 1.75rem 1.75rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Form elements shared with settings page */
+.ob-card .form-group { margin-bottom: 1.1rem; }
+.ob-card .form-group:last-of-type { margin-bottom: 0; }
+.ob-card label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--clr-text);
+    margin-bottom: 0.35rem;
+}
+.ob-card .field-hint {
+    font-size: 0.75rem;
+    color: var(--clr-subtle);
+    margin-top: 0.3rem;
+    line-height: 1.4;
+}
+.ob-card input[type="text"],
+.ob-card select {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--clr-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: var(--clr-text);
+    background: var(--clr-surface);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    appearance: none;
+    box-sizing: border-box;
+}
+.ob-card input[type="text"]:focus,
+.ob-card select:focus {
+    outline: none;
+    border-color: var(--clr-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+.ob-card select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%2364748b' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    padding-right: 2.25rem;
+    cursor: pointer;
+}
+.ob-card select:disabled { opacity: 0.6; cursor: default; }
+
+.ob-advanced summary {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--clr-muted);
+    cursor: pointer;
+    padding: 0.6rem 0;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-top: 1px solid var(--clr-border);
+    margin-top: 0.5rem;
+}
+.ob-advanced summary::-webkit-details-marker { display: none; }
+.ob-advanced summary::before {
+    content: '▸';
+    font-size: 0.6rem;
+    opacity: 0.6;
+    transition: transform 0.15s;
+}
+.ob-advanced[open] summary::before { content: '▾'; }
+.ob-advanced-body { padding-top: 0.75rem; }
+
+.btn-primary {
+    padding: 0.6rem 1.5rem;
+    background: var(--clr-primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, opacity 0.15s;
+}
+.btn-primary:hover:not(:disabled) { background: var(--clr-primary-dark); }
+.btn-primary:disabled { opacity: 0.45; cursor: default; }
+
 {% endblock %}
 
 {% block content %}
+
+{% if show_onboarding %}
+<div id="onboarding-modal" class="ob-overlay">
+    <div class="ob-card">
+        <div class="ob-header">
+            <h2 class="ob-title">Welcome to School Lunch Menu</h2>
+            <p class="ob-subtitle">Select your school to start viewing the lunch menu.</p>
+        </div>
+
+        <form id="ob-form" method="POST" action="/settings">
+            <input type="hidden" id="ob-school-name" name="school_name" value="">
+            <input type="hidden" id="ob-school-type" name="school_type" value="Elementary">
+
+            <div class="ob-body">
+
+                <div class="form-group">
+                    <label for="ob-district">School District</label>
+                    <select id="ob-district" name="district_id">
+                        <option value="">Select a district&hellip;</option>
+                        {% for id, name in district_options %}
+                        <option value="{{ id }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="ob-school">School</label>
+                    <select id="ob-school" name="school_id" disabled>
+                        <option value="">Select a district first&hellip;</option>
+                    </select>
+                </div>
+
+                <details class="ob-advanced">
+                    <summary>More options</summary>
+                    <div class="ob-advanced-body">
+                        <div class="form-group">
+                            <label for="ob-grade">Grade</label>
+                            <select id="ob-grade" name="grade">
+                                <!-- Populated after school selection -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ob-meal-type">Meal Type</label>
+                            <select id="ob-meal-type" name="meal_type" disabled>
+                                <option value="">—</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ob-serving-line">Serving Line</label>
+                            <select id="ob-serving-line" name="serving_line" disabled>
+                                <option value="">—</option>
+                            </select>
+                        </div>
+                    </div>
+                </details>
+
+            </div>
+
+            <div class="ob-footer">
+                <button type="submit" id="ob-submit" class="btn-primary" disabled>Get Started</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
 
 <div class="week-nav">
     {% if can_go_back %}
@@ -273,6 +466,197 @@
 </div>
 
 <script>
+    const SHOW_ONBOARDING = {{ 'true' if show_onboarding else 'false' }};
+    const GRADE_OPTIONS_BY_TYPE = {{ grade_options_by_type | tojson }};
+
+    // ── Onboarding modal ──────────────────────────────────────────────────────
+
+    if (SHOW_ONBOARDING) {
+        const TYPE_ORDER = ['Elementary School', 'Middle School', 'High School'];
+        const SITE_TYPE_MAP = {
+            'Elementary School': 'Elementary',
+            'Middle School':     'Middle',
+            'High School':       'High',
+        };
+
+        const obDistrict    = document.getElementById('ob-district');
+        const obSchool      = document.getElementById('ob-school');
+        const obGrade       = document.getElementById('ob-grade');
+        const obMealType    = document.getElementById('ob-meal-type');
+        const obServingLine = document.getElementById('ob-serving-line');
+        const obSubmit      = document.getElementById('ob-submit');
+        const obSchoolName  = document.getElementById('ob-school-name');
+        const obSchoolType  = document.getElementById('ob-school-type');
+
+        function obCheckReady() {
+            const ready =
+                !!obSchool.value &&
+                !!obGrade.value &&
+                !obMealType.disabled && !!obMealType.value &&
+                !obServingLine.disabled && !!obServingLine.value;
+            obSubmit.disabled = !ready;
+        }
+
+        function obUpdateGrades(schoolType) {
+            const options = GRADE_OPTIONS_BY_TYPE[schoolType] || [];
+            obGrade.innerHTML = '';
+            options.forEach(([value, label]) => {
+                const opt = document.createElement('option');
+                opt.value = value;
+                opt.textContent = label;
+                obGrade.appendChild(opt);
+            });
+            if (obGrade.options.length > 0)
+                obGrade.selectedIndex = obGrade.options.length - 1;
+            obCheckReady();
+        }
+
+        obGrade.addEventListener('change', obCheckReady);
+
+        obDistrict.addEventListener('change', () => {
+            const districtId = obDistrict.value;
+            if (!districtId) {
+                obSchool.innerHTML = '<option value="">Select a district first&hellip;</option>';
+                obSchool.disabled = true;
+                obSubmit.disabled = true;
+                return;
+            }
+            obLoadSchools(districtId);
+        });
+
+        obSchool.addEventListener('change', () => {
+            const opt = obSchool.options[obSchool.selectedIndex];
+            const schoolType = opt.dataset.type || 'Elementary';
+            obSchoolName.value = opt.textContent.trim();
+            obSchoolType.value = schoolType;
+            obUpdateGrades(schoolType);
+            obCheckReady();
+            if (opt.value) obLoadMealTypes(opt.value);
+        });
+
+        async function obLoadSchools(districtId) {
+            obSchool.disabled = true;
+            obSchool.innerHTML = '<option value="">Loading&hellip;</option>';
+            obSubmit.disabled = true;
+
+            try {
+                const resp = await fetch(`/api/schools?district_id=${encodeURIComponent(districtId)}`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const schools = await resp.json();
+
+                const groups = {};
+                schools.forEach(s => {
+                    const t = s.SiteTypeDescription || 'Other';
+                    if (!groups[t]) groups[t] = [];
+                    groups[t].push(s);
+                });
+                Object.values(groups).forEach(arr =>
+                    arr.sort((a, b) => a.SchoolName.localeCompare(b.SchoolName))
+                );
+
+                obSchool.innerHTML = '<option value="">Select a school&hellip;</option>';
+                const orderedTypes = [
+                    ...TYPE_ORDER.filter(t => groups[t]),
+                    ...Object.keys(groups).filter(t => !TYPE_ORDER.includes(t)),
+                ];
+                orderedTypes.forEach(typeName => {
+                    const group = document.createElement('optgroup');
+                    group.label = typeName;
+                    groups[typeName].forEach(school => {
+                        const opt = document.createElement('option');
+                        opt.value = school.SchoolId;
+                        opt.textContent = school.SchoolName;
+                        opt.dataset.type = SITE_TYPE_MAP[typeName] || 'Elementary';
+                        group.appendChild(opt);
+                    });
+                    obSchool.appendChild(group);
+                });
+
+                obSchool.disabled = false;
+            } catch (err) {
+                obSchool.innerHTML = '<option value="">Failed to load – try again</option>';
+                obSchool.disabled = false;
+            }
+        }
+
+        obMealType.addEventListener('change', async () => {
+            const sid = obSchool.value;
+            if (sid && obMealType.value) await obLoadServingLines(sid, obMealType.value);
+            obCheckReady();
+        });
+
+        async function obLoadMealTypes(schoolId) {
+            obMealType.disabled = true;
+            obMealType.innerHTML = '<option value="">Loading&hellip;</option>';
+            obServingLine.disabled = true;
+            obServingLine.innerHTML = '<option value="">—</option>';
+
+            try {
+                const resp = await fetch(`/api/meal-types?school_id=${encodeURIComponent(schoolId)}`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const mealTypes = await resp.json();
+
+                obMealType.innerHTML = '';
+                let defaultMealType = null;
+                mealTypes.forEach(mt => {
+                    const opt = document.createElement('option');
+                    opt.value = mt.MealTypeDescription;
+                    opt.textContent = mt.MealTypeDescription;
+                    obMealType.appendChild(opt);
+                    if (!defaultMealType) defaultMealType = mt.MealTypeDescription;
+                    if (mt.MealTypeDescription === 'Lunch') {
+                        opt.selected = true;
+                        defaultMealType = mt.MealTypeDescription;
+                    }
+                });
+                if (defaultMealType) await obLoadServingLines(schoolId, defaultMealType);
+            } catch (err) {
+                obMealType.innerHTML = '<option value="">Failed to load</option>';
+            } finally {
+                obMealType.disabled = false;
+                obCheckReady();
+            }
+        }
+
+        async function obLoadServingLines(schoolId, mealType) {
+            obServingLine.disabled = true;
+            obServingLine.innerHTML = '<option value="">Loading&hellip;</option>';
+
+            try {
+                const resp = await fetch(
+                    `/api/serving-lines?school_id=${encodeURIComponent(schoolId)}&meal_type=${encodeURIComponent(mealType)}`
+                );
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const lines = await resp.json();
+
+                obServingLine.innerHTML = '';
+                lines.forEach(sl => {
+                    const opt = document.createElement('option');
+                    opt.value = sl.ServingLineDescription;
+                    opt.textContent = sl.ServingLineDescription;
+                    obServingLine.appendChild(opt);
+                });
+            } catch (err) {
+                obServingLine.innerHTML = '<option value="">Failed to load</option>';
+            } finally {
+                obServingLine.disabled = false;
+                obCheckReady();
+            }
+        }
+
+        // Validate before submit
+        document.getElementById('ob-form').addEventListener('submit', e => {
+            const ready =
+                !!obSchool.value &&
+                !!obGrade.value &&
+                !obMealType.disabled && !!obMealType.value &&
+                !obServingLine.disabled && !!obServingLine.value;
+            if (!ready) e.preventDefault();
+        });
+    }
+
+    // ── Menu loading ──────────────────────────────────────────────────────────
+
     const CATEGORIES = [
         { key: 'GRAINS',     alt: 'GRAIN',     label: 'Grains' },
         { key: 'VEGETABLES', alt: 'VEGETABLE',  label: 'Vegetables' },
@@ -354,28 +738,30 @@
         }
     }
 
-    (async () => {
-        const cards = [...document.querySelectorAll('.day-card')]
-            .sort((a, b) => a.dataset.isoDate.localeCompare(b.dataset.isoDate));
+    if (!SHOW_ONBOARDING) {
+        (async () => {
+            const cards = [...document.querySelectorAll('.day-card')]
+                .sort((a, b) => a.dataset.isoDate.localeCompare(b.dataset.isoDate));
 
-        // Kick off all fetches simultaneously
-        const promises = cards.map(card =>
-            fetch(`/api/menu?date=${encodeURIComponent(card.dataset.apiDate)}`)
-                .then(r => r.json())
-                .catch(() => null)
-        );
+            // Kick off all fetches simultaneously
+            const promises = cards.map(card =>
+                fetch(`/api/menu?date=${encodeURIComponent(card.dataset.apiDate)}`)
+                    .then(r => r.json())
+                    .catch(() => null)
+            );
 
-        // Render in Mon→Fri order as each resolves
-        for (let i = 0; i < cards.length; i++) {
-            const data = await promises[i];
-            if (data) {
-                renderDay(cards[i], data);
-            } else {
-                cards[i].querySelector('.day-body').innerHTML =
-                    '<p class="state-error">Failed to load</p>';
+            // Render in Mon→Fri order as each resolves
+            for (let i = 0; i < cards.length; i++) {
+                const data = await promises[i];
+                if (data) {
+                    renderDay(cards[i], data);
+                } else {
+                    cards[i].querySelector('.day-body').innerHTML =
+                        '<p class="state-error">Failed to load</p>';
+                }
             }
-        }
-    })();
+        })();
+    }
 </script>
 
 {% endblock %}
